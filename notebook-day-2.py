@@ -1292,7 +1292,46 @@ def _(mo):
     - Check the controllability of this new system.
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We fix $f = Mg$ and drop the $y$ equations. The reduced state is 
+    $(x, \dot{x}, \theta, \dot{\theta})$ with only $\phi$ as input.
+
+    From the linearized equations:
+    $$
+    \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi), \qquad
+    \Delta\ddot{\theta} = -\frac{Mg\ell}{2J} \Delta\phi
+    $$
+    """)
+    return
+
+
+@app.cell
+def _(J, M, g, l, np):
+    A_lat = np.array([
+        [0, 1,  0, 0],
+        [0, 0, -g, 0],
+        [0, 0,  0, 1],
+        [0, 0,  0, 0],
+    ], dtype=float)
+
+    B_lat = np.array([
+        [0],
+        [-g],
+        [0],
+        [-M*g*l/(2*J)],
+    ], dtype=float)
+
+    # controllability
+    n_lat = A_lat.shape[0]
+    cols_lat = [np.linalg.matrix_power(A_lat, k) @ B_lat for k in range(n_lat)]
+    C_lat = np.hstack(cols_lat)
+    rank_lat = np.linalg.matrix_rank(C_lat)
+    print(f"rank = {rank_lat} / {n_lat} → controllable: {rank_lat == n_lat}")
+    return A_lat, B_lat, rank_lat
 
 @app.cell(hide_code=True)
 def _(mo):

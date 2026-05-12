@@ -1762,7 +1762,119 @@ def _(mo):
     Explain how you find the proper design parameters!
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    #### Where we are and why LQR
+
+    At this point we have two controllers: a manual one that only stabilizes $\theta$, and a pole placement one that stabilizes both $x$ and $\theta$. Both work, but pole placement had an unsatisfying aspect — we picked $\lambda_{1,2} = -0.3 \pm 0.2j$ and $\lambda_{3,4} = -0.5 \pm 0.3j$ somewhat by intuition. Why those numbers and not others? LQR answers this question properly.
+
+    The key insight is that **choosing Q and R in LQR is equivalent to choosing the poles in pole placement** — both methods determine where the closed-loop eigenvalues end up. The difference is that in pole placement we pick the eigenvalues directly, which requires knowing what "good" eigenvalues look like. In LQR we instead pick $Q$ and $R$, which have a direct physical meaning: how much do we care about state errors vs control effort? The algorithm then computes the optimal eigenvalues for us. Same result, but the design choices are physically motivated rather than arbitrary.
+
+    Instead of choosing poles directly, LQR asks us to define a **cost function** that encodes our priorities:
+    $$
+    J = \int_0^\infty \left( s^T Q s + u^T R u \right) dt
+    $$
+
+    - $s^T Q s$ penalizes being far from equilibrium — large $Q$ means "I really want the state to converge fast"
+    - $u^T R u$ penalizes control effort — large $R$ means "I don't want $\phi$ to be too large"
+
+    The algorithm then finds the gain $K_{oc}$ that minimizes this cost exactly, by solving the **algebraic Riccati equation**:
+    $$
+    A^T P + PA - PBR^{-1}B^T P + Q = 0
+    $$
+    which gives matrix $P$, and then:
+    $$
+    K_{oc} = R^{-1} B^T P
+    $$
+
+    #### How to choose Q and R — Bryson's rule
+
+    The standard starting point is **Bryson's rule**: normalize each state and input by its maximum acceptable value:
+    $$
+    Q_{ii} = \frac{1}{x_{i,max}^2}, \qquad R = \frac{1}{u_{max}^2}
+    $$
+
+    This puts everything on the same scale so no state dominates just because it's measured in different units.
+
+    For our system, we ask: what is the largest deviation we're willing to tolerate before it becomes a real problem?
+
+    - $|\Delta x| \leq 3$ m — the booster can drift a few meters but not fly off screen $\Rightarrow Q_{11} = 1/9 \approx 0.1$
+    - $|\Delta\dot{x}| \leq 1$ m/s — lateral velocity should stay reasonable $\Rightarrow Q_{22} = 1$
+    - $|\Delta\theta| \leq \pi/4$ — a tilt beyond 45° is already dangerous $\Rightarrow Q_{33} = 16/\pi^2 \approx 1.6$
+    - $|\Delta\dot{\theta}| \leq 1$ rad/s — angular rate should stay controlled $\Rightarrow Q_{44} = 1$
+    - $|\Delta\phi| \leq \pi/4$ — we want to stay well within the $\pi/2$ hard limit $\Rightarrow R = 16/\pi^2 \approx 1.6$
+
+    Notice that $Q_{33} > Q_{11}$: we penalize tilt more than lateral drift. This reflects exactly what we learned in the cascade analysis — $\theta$ must converge before $x$ can, so the controller should prioritize it. LQR will automatically place the $\theta$ poles further left than the $x$ poles, just like we did manually in pole placement — but now it comes out of the math rather than from our intuition.
+
+    Also notice that $R \approx Q_{33}$: we penalize $\phi$ almost as much as $\theta$. This is what keeps $|\Delta\phi| < \pi/2$ — if we set $R$ too small, the controller would use aggressive $\phi$ corrections that violate the constraint.
+    """)
+    return
+
+
+@app.cell
+def _(A_lat, B_lat, np, plt, scipy):
+    Q_lqr = np.diag([0.1, 1.0, 1.6, 1.0])
+    R_lqr = np.array([[1.6]])
+
+    P_lqr = scipy.linalg.solve_continuous_are(A_lat, B_lat, Q_lqr, R_lqr)
+    K_oc = np.linalg.inv(R_lqr) @ B_lat.T @ P_lqr
+
+    A_cl_oc = A_lat - B_lat @ K_oc
+    eigs_oc = np.linalg.eigvals(A_cl_oc)
+    print("K_oc =", np.round(K_oc, 4))
+    print("Closed-loop eigenvalues:", np.round(eigs_oc, 4))
+    print("Asymptotically stable:", all(np.real(eigs_oc) < 0))
+
+    def sim_oc():
+        s0_oc = np.array([0.0, 0.0, np.pi/4, 0.0])
+        sol_oc = scipy.integrate.solve_ivp(
+            lambda t, s: A_cl_oc @ s,
+            [0, 30], s0_oc,
+            t_eval=np.linspace(0, 30, 1000)
+        )
+        phi_oc = -(K_oc @ sol_oc.y)[0]
+
+        fig_oc, axes_oc = plt.subplots(1, 3, figsize=(14, 4))
+
+        axes_oc[0].plot(sol_oc.t, sol_oc.y[0])
+        axes_oc[0].set_title(r"$\Delta x(t)$ (LQR)")
+        axes_oc[0].set_xlabel("time (s)")
+        axes_oc[0].grid(True)
+
+        axes_oc[1].plot(sol_oc.t, sol_oc.y[2])
+        axes_oc[1].axhline(0, color='k', ls='--', lw=0.8)
+        axes_oc[1].set_title(r"$\Delta\theta(t)$ (LQR)")
+        axes_oc[1].set_xlabel("time (s)")
+        axes_oc[1].grid(True)
+
+        axes_oc[2].plot(sol_oc.t, phi_oc)
+        axes_oc[2].axhline( np.pi/2, color='r', ls=':', label=r"$\pm\pi/2$ limit")
+        axes_oc[2].axhline(-np.pi/2, color='r', ls=':')
+        axes_oc[2].set_title(r"$\Delta\phi(t)$ (LQR)")
+        axes_oc[2].set_xlabel("time (s)")
+        axes_oc[2].legend()
+        axes_oc[2].grid(True)
+
+        plt.tight_layout()
+        return fig_oc
+
+    sim_oc()
+    return A_cl_oc, K_oc, P_lqr, Q_lqr, R_lqr, sim_oc
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Both $\Delta x$ and $\Delta\theta$ converge within 20s and $|\Delta\phi| < \pi/2$ throughout — same performance as pole placement but now the design choices are fully justified.
+
+    Looking at the closed-loop eigenvalues: the $\theta$ modes ended up further left than the $x$ modes, exactly as we predicted from the cascade structure. LQR recovered the same intuition automatically, just from the cost matrices.
+
+    The last step is to test this on the real nonlinear model — everything so far was on the linearized approximation, which is only valid near the equilibrium. If $\theta(0) = \pi/4$ is too large for the linearization to hold, the controller might fail on the real system even though it works perfectly on the linear one.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

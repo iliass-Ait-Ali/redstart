@@ -1337,20 +1337,37 @@ def _(mo):
 
     - Check the controllability of this new system.
     """)
-    return
-@app.cell(hide_code=True)
+    return@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    We fix $f = Mg$ and drop the $y$ equations. The reduced state is 
-    $(x, \dot{x}, \theta, \dot{\theta})$ with only $\phi$ as input.
+    #### Simplifying the problem
 
-    From the linearized equations:
+    Up to now we've been working with the full 6-dimensional system. But if you think about what actually matters for landing, the vertical dynamics ($y$ and $\dot{y}$) are relatively straightforward — just tune the thrust magnitude $f$. The genuinely tricky part is keeping the booster upright and laterally centered, which involves $x$, $\dot{x}$, $\theta$, $\dot{\theta}$.
+
+    So let's focus on that. We fix $f = Mg$ (thrust exactly cancels gravity) and use only $\phi$ as our control input. The $y$ equations disappear from the picture.
+
+    With $\Delta f = 0$ the linearized equations reduce to:
     $$
-    \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi), \qquad
-    \Delta\ddot{\theta} = -\frac{Mg\ell}{2J} \Delta\phi
+    \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi), \qquad \Delta\ddot{\theta} = -\frac{Mg\ell}{2J}\Delta\phi
     $$
+
+    Writing this in state-space form with reduced state $(\Delta x, \Delta\dot{x}, \Delta\theta, \Delta\dot{\theta})$:
+
+    $$
+    A_{lat} = \begin{bmatrix}
+    0 & 1 & 0 & 0 \\
+    0 & 0 & -g & 0 \\
+    0 & 0 & 0 & 1 \\
+    0 & 0 & 0 & 0
+    \end{bmatrix}, \qquad
+    B_{lat} = \begin{bmatrix} 0 \\ -g \\ 0 \\ -Mg\ell/(2J) \end{bmatrix}
+    $$
+
+    Notice that $A_{lat}$ still has the $-g$ coupling between $\Delta\theta$ and $\Delta\ddot{x}$ — a tilt always accelerates the booster sideways. And $B_{lat}$ shows that $\phi$ affects both the lateral acceleration and the angular acceleration simultaneously.
+
+    Now let's check controllability of this reduced system — we only have one input now, so this is a stricter test.
     """)
     return
 
@@ -1371,14 +1388,24 @@ def _(J, M, g, l, np):
         [-M*g*l/(2*J)],
     ], dtype=float)
 
-    # controllability
+    print("A_lat =\n", A_lat)
+    print("\nB_lat =\n", B_lat)
+
     n_lat = A_lat.shape[0]
     cols_lat = [np.linalg.matrix_power(A_lat, k) @ B_lat for k in range(n_lat)]
     C_lat = np.hstack(cols_lat)
     rank_lat = np.linalg.matrix_rank(C_lat)
-    print(f"rank = {rank_lat} / {n_lat} → controllable: {rank_lat == n_lat}")
+    print(f"\nrank(C_lat) = {rank_lat}  /  n = {n_lat}")
+    print("Lateral system controllable:", rank_lat == n_lat)
     return A_lat, B_lat, rank_lat
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Full rank — even with a single input $\phi$ we can control all four lateral states. This makes physical sense: tilting the nozzle by $\Delta\phi$ creates a torque $\tau = -Mg(\ell/2)\Delta\phi$ that rotates the booster, and a tilted booster with angle $\Delta\theta$ produces a horizontal force $-Mg\Delta\theta$ that moves it laterally. So $\phi$ propagates through the dynamics and indirectly controls everything — it just takes a couple of steps.
+    """)
+    return
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -1392,7 +1419,57 @@ def _(mo):
     """)
     return
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    With $\phi = 0$ the closed-loop reduces to $\dot{s} = A_{lat} s$ with no input at all. Let's simulate from $\theta(0) = \pi/4$ and see what happens.
+    """)
+    return
+
+
+@app.cell
+def _(A_lat, np, plt, scipy):
+    s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
+    t_eval = np.linspace(0, 10, 500)
+
+    sol_openloop = scipy.integrate.solve_ivp(
+        lambda t, s: A_lat @ s,
+        [0, 10], s0, t_eval=t_eval
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    axes[0].plot(sol_openloop.t, sol_openloop.y[0])
+    axes[0].set_title(r"$\Delta x(t)$")
+    axes[0].set_xlabel("time (s)")
+    axes[0].grid(True)
+
+    axes[1].plot(sol_openloop.t, sol_openloop.y[2])
+    axes[1].axhline(np.pi/4, color='r', ls='--', label=r"$\theta(0) = \pi/4$")
+    axes[1].set_title(r"$\Delta\theta(t)$")
+    axes[1].set_xlabel("time (s)")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    plt.tight_layout()
+    fig
+    return (sol_openloop,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Two things stand out:
+
+    **$\theta(t)$ stays constant at $\pi/4$.** With $\phi = 0$ the torque equation gives $J\Delta\ddot{\theta} = 0$, so $\Delta\dot{\theta} = 0$ and $\Delta\theta$ never changes. The booster is stuck tilted with no mechanism to correct itself.
+
+    **$x(t)$ grows parabolically.** The constant tilt $\Delta\theta = \pi/4$ produces a constant horizontal acceleration $\Delta\ddot{x} = -g\Delta\theta = -g\pi/4$. Integrating twice gives $\Delta x(t) = -\frac{g\pi}{8} t^2$ — a parabola, exactly what we see.
+
+    This is the open-loop instability in action. Without any corrective $\phi$, a tilted booster just keeps accelerating sideways indefinitely. This is why active control is not optional — it's the only thing keeping the booster from flying off sideways.
+    """)
+    return
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""

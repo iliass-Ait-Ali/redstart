@@ -1087,17 +1087,46 @@ def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    At equilibrium all velocities and accelerations are zero.
-    From the equations of motion with $\sin\phi \approx \phi$ and $\sin\theta \approx \theta$ for small angles:
+    An equilibrium is a state where nothing changes — all velocities and accelerations are zero. So we need:
 
-    - $\ddot{\theta} = 0$ requires $\phi = 0$
-    - $\ddot{x} = 0$ requires $\theta = 0$  
-    - $\ddot{y} = 0$ requires $f = Mg$
+    $$
+    v_x = v_y = \omega = 0 \quad \text{and} \quad \ddot{x} = \ddot{y} = \ddot{\theta} = 0
+    $$
 
-    So the only equilibrium is $\theta = 0$, $\phi = 0$, $f = Mg$, at any position $(x, y)$ with zero velocities.
+    **From $\ddot{\theta} = 0$:**
+    $$
+    J\ddot{\theta} = -f \frac{\ell}{2} \sin\phi = 0
+    $$
+    Since $f > 0$, we need $\sin\phi = 0$, so $\phi = 0$.
+
+    **From $\ddot{x} = 0$:**
+    $$
+    M\ddot{x} = -f\sin(\theta + \phi) = -f\sin\theta = 0
+    $$
+    Since $f > 0$, we need $\sin\theta = 0$, so $\theta = 0$.
+
+    **From $\ddot{y} = 0$:**
+    $$
+    M\ddot{y} = f\cos(0) - Mg = f - Mg = 0
+    $$
+    So $f = Mg$.
+
+    **Conclusion:** the only equilibrium is
+    $$
+    \boxed{\theta = 0, \quad \phi = 0, \quad f = Mg}
+    $$
+    with $x$, $y$ arbitrary and all velocities zero.
     """)
     return
 
+
+@app.cell
+def _(M, g):
+    f_eq = M * g
+    theta_eq = 0.0
+    phi_eq = 0.0
+    print(f"Equilibrium: f = {f_eq} N,  theta = {theta_eq} rad,  phi = {phi_eq} rad")
+    return f_eq, phi_eq, theta_eq
 
 @app.cell
 def _(M, g):

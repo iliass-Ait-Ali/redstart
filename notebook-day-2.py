@@ -1425,38 +1425,39 @@ def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    With $\phi = 0$ the closed-loop reduces to $\dot{s} = A_{lat} s$ with no input at all. Let's simulate from $\theta(0) = \pi/4$ and see what happens.
+    With $\phi = 0$ the system reduces to $\dot{s} = A_{lat} s$ with no input at all. Let's simulate from $\theta(0) = \pi/4$ and see what happens.
     """)
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(A_lat, np, plt, scipy):
-    s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
-    t_eval = np.linspace(0, 10, 500)
+    def free_fall_linear():
+        s0_ff = np.array([0.0, 0.0, np.pi/4, 0.0])
+        sol_openloop = scipy.integrate.solve_ivp(
+            lambda t, s: A_lat @ s,
+            [0, 10], s0_ff,
+            t_eval=np.linspace(0, 10, 500)
+        )
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
-    sol_openloop = scipy.integrate.solve_ivp(
-        lambda t, s: A_lat @ s,
-        [0, 10], s0, t_eval=t_eval
-    )
+        axes[0].plot(sol_openloop.t, sol_openloop.y[0])
+        axes[0].set_title(r"$\Delta x(t)$")
+        axes[0].set_xlabel("time (s)")
+        axes[0].grid(True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+        axes[1].plot(sol_openloop.t, sol_openloop.y[2])
+        axes[1].axhline(np.pi/4, color='r', ls='--', label=r"$\theta(0) = \pi/4$")
+        axes[1].set_title(r"$\Delta\theta(t)$")
+        axes[1].set_xlabel("time (s)")
+        axes[1].legend()
+        axes[1].grid(True)
 
-    axes[0].plot(sol_openloop.t, sol_openloop.y[0])
-    axes[0].set_title(r"$\Delta x(t)$")
-    axes[0].set_xlabel("time (s)")
-    axes[0].grid(True)
+        plt.tight_layout()
+        return fig
 
-    axes[1].plot(sol_openloop.t, sol_openloop.y[2])
-    axes[1].axhline(np.pi/4, color='r', ls='--', label=r"$\theta(0) = \pi/4$")
-    axes[1].set_title(r"$\Delta\theta(t)$")
-    axes[1].set_xlabel("time (s)")
-    axes[1].legend()
-    axes[1].grid(True)
-
-    plt.tight_layout()
-    fig
-    return (sol_openloop,)
+    free_fall_linear()
+    return (free_fall_linear,)
 
 
 @app.cell(hide_code=True)
@@ -1468,7 +1469,7 @@ def _(mo):
 
     **$x(t)$ grows parabolically.** The constant tilt $\Delta\theta = \pi/4$ produces a constant horizontal acceleration $\Delta\ddot{x} = -g\Delta\theta = -g\pi/4$. Integrating twice gives $\Delta x(t) = -\frac{g\pi}{8} t^2$ — a parabola, exactly what we see.
 
-    This is the open-loop instability in action. Without any corrective $\phi$, a tilted booster just keeps accelerating sideways indefinitely. This is why active control is not optional — it's the only thing keeping the booster from flying off sideways.
+    This is the open-loop instability in action. Without any corrective $\phi$, a tilted booster just keeps accelerating sideways indefinitely.
     """)
     return
 @app.cell(hide_code=True)
@@ -1675,13 +1676,11 @@ def _(mo):
 
     #### Why do we damp $\theta$ faster than $x$?
 
-    This is the key design choice. The dynamics of the system create a **cascade**: $\phi$ directly controls $\theta$, and $\theta$ indirectly controls $x$ through the coupling term $-g\Delta\theta$ in the $\ddot{x}$ equation.
+    This is the key design choice. The dynamics create a **cascade**: $\phi$ directly controls $\theta$, and $\theta$ indirectly controls $x$ through the coupling term $-g\Delta\theta$ in the $\ddot{x}$ equation.
 
-    Think about it physically: if the booster is tilted, it accelerates sideways. So before $x$ can converge, $\theta$ must already be close to zero — otherwise the booster keeps drifting. This means we **must** stabilize $\theta$ faster than $x$, otherwise the controller fights itself.
+    Think about it physically: if the booster is still tilted, it keeps accelerating sideways — so $x$ can never converge while $\theta \neq 0$. We must stabilize $\theta$ first, then $x$ follows naturally. If we placed the $\theta$ poles slower than the $x$ poles, the controller would fight itself.
 
-    If we placed the $\theta$ poles slower than the $x$ poles, the lateral position would try to correct itself while the booster is still tilted, generating a chaotic back-and-forth. The cascade structure of the dynamics imposes a natural ordering: fix the tilt first, then the position follows.
-
-    There's also a practical constraint: $|\Delta\phi| < \pi/2$ at all times. Placing the $\theta$ poles too far left (very fast convergence) would require large $\phi$ corrections right at $t=0$ when $\theta(0) = \pi/4$ — we might violate the constraint. So we can't just push all poles as far left as we want.
+    There is also a practical constraint: $|\Delta\phi| < \pi/2$ at all times. Placing the $\theta$ poles too far left means large $\phi$ corrections right at $t=0$ when $\theta(0) = \pi/4$ — we might violate the constraint.
 
     Balancing all this, I choose:
     $$
@@ -1691,7 +1690,7 @@ def _(mo):
     \lambda_{3,4} = -0.5 \pm 0.3j \quad \Rightarrow \quad \tau = 2\text{s} \quad \text{(}\theta\text{ modes — faster)}
     $$
 
-    The imaginary parts $\pm 0.2j$ and $\pm 0.3j$ introduce mild oscillations in the response — just enough to make the convergence smooth without being purely exponential, which would require very large gains.
+    The small imaginary parts introduce mild oscillations — just enough for a smooth response without requiring very large gains.
     """)
     return
 
@@ -1701,45 +1700,47 @@ def _(A_lat, B_lat, np, plt, scipy):
     desired_poles = np.array([-0.3 + 0.2j, -0.3 - 0.2j, -0.5 + 0.3j, -0.5 - 0.3j])
     result_pp = scipy.signal.place_poles(A_lat, B_lat, desired_poles)
     K_pp = result_pp.gain_matrix
-
     A_cl_pp = A_lat - B_lat @ K_pp
     eigs_pp = np.linalg.eigvals(A_cl_pp)
     print("K_pp =", np.round(K_pp, 4))
     print("Closed-loop eigenvalues:", np.round(eigs_pp, 4))
     print("Asymptotically stable:", all(np.real(eigs_pp) < 0))
 
-    s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
-    sol_pp = scipy.integrate.solve_ivp(
-        lambda t, s: A_cl_pp @ s,
-        [0, 30], s0,
-        t_eval=np.linspace(0, 30, 1000)
-    )
-    phi_pp = -(K_pp @ sol_pp.y)[0]
+    def sim_pp():
+        s0_pp = np.array([0.0, 0.0, np.pi/4, 0.0])
+        sol_pp = scipy.integrate.solve_ivp(
+            lambda t, s: A_cl_pp @ s,
+            [0, 30], s0_pp,
+            t_eval=np.linspace(0, 30, 1000)
+        )
+        phi_pp = -(K_pp @ sol_pp.y)[0]
 
-    fig_pp, axes_pp = plt.subplots(1, 3, figsize=(14, 4))
+        fig_pp, axes_pp = plt.subplots(1, 3, figsize=(14, 4))
 
-    axes_pp[0].plot(sol_pp.t, sol_pp.y[0])
-    axes_pp[0].set_title(r"$\Delta x(t)$")
-    axes_pp[0].set_xlabel("time (s)")
-    axes_pp[0].grid(True)
+        axes_pp[0].plot(sol_pp.t, sol_pp.y[0])
+        axes_pp[0].set_title(r"$\Delta x(t)$")
+        axes_pp[0].set_xlabel("time (s)")
+        axes_pp[0].grid(True)
 
-    axes_pp[1].plot(sol_pp.t, sol_pp.y[2])
-    axes_pp[1].axhline(0, color='k', ls='--', lw=0.8)
-    axes_pp[1].set_title(r"$\Delta\theta(t)$")
-    axes_pp[1].set_xlabel("time (s)")
-    axes_pp[1].grid(True)
+        axes_pp[1].plot(sol_pp.t, sol_pp.y[2])
+        axes_pp[1].axhline(0, color='k', ls='--', lw=0.8)
+        axes_pp[1].set_title(r"$\Delta\theta(t)$")
+        axes_pp[1].set_xlabel("time (s)")
+        axes_pp[1].grid(True)
 
-    axes_pp[2].plot(sol_pp.t, phi_pp)
-    axes_pp[2].axhline( np.pi/2, color='r', ls=':', label=r"$\pm\pi/2$ limit")
-    axes_pp[2].axhline(-np.pi/2, color='r', ls=':')
-    axes_pp[2].set_title(r"$\Delta\phi(t)$")
-    axes_pp[2].set_xlabel("time (s)")
-    axes_pp[2].legend()
-    axes_pp[2].grid(True)
+        axes_pp[2].plot(sol_pp.t, phi_pp)
+        axes_pp[2].axhline( np.pi/2, color='r', ls=':', label=r"$\pm\pi/2$ limit")
+        axes_pp[2].axhline(-np.pi/2, color='r', ls=':')
+        axes_pp[2].set_title(r"$\Delta\phi(t)$")
+        axes_pp[2].set_xlabel("time (s)")
+        axes_pp[2].legend()
+        axes_pp[2].grid(True)
 
-    plt.tight_layout()
-    fig_pp
-    return A_cl_pp, K_pp, sol_pp
+        plt.tight_layout()
+        return fig_pp
+
+    sim_pp()
+    return A_cl_pp, K_pp, desired_poles, result_pp, sim_pp
 
 
 @app.cell(hide_code=True)

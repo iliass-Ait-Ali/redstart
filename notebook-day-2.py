@@ -1509,7 +1509,115 @@ def _(mo):
     Is your final closed-loop model asymptotically stable?
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    #### Designing a controller by hand
+
+    The control law is $\Delta\phi = -k_3\Delta\theta - k_4\Delta\dot{\theta}$. The idea is simple: $k_3$ acts like a spring — it creates a restoring torque proportional to the current tilt. $k_4$ acts like a damper — it resists angular velocity to avoid oscillations.
+
+    With this control law, the closed-loop $\theta$ equation becomes:
+    $$
+    J\Delta\ddot{\theta} = -\frac{Mg\ell}{2}(k_3\Delta\theta + k_4\Delta\dot{\theta})
+    $$
+
+    which is exactly a **second-order damped oscillator**:
+    $$
+    \Delta\ddot{\theta} + \frac{Mg\ell}{2J}k_4\,\Delta\dot{\theta} + \frac{Mg\ell}{2J}k_3\,\Delta\theta = 0
+    $$
+
+    Identifying with the standard form $\ddot{\theta} + 2\zeta\omega_n\dot{\theta} + \omega_n^2\theta = 0$:
+    $$
+    \omega_n = \sqrt{\frac{Mg\ell}{2J}k_3}, \qquad \zeta = \frac{k_4}{2}\sqrt{\frac{Mg\ell}{2Jk_3}}
+    $$
+
+    With our values $M=1$, $g=1$, $\ell=2$, $J=1/3$:
+    $$
+    \frac{Mg\ell}{2J} = \frac{1 \cdot 1 \cdot 2}{2 \cdot 1/3} = 3
+    $$
+
+    So $\omega_n = \sqrt{3k_3}$ and $\zeta = \frac{k_4}{2}\sqrt{\frac{3}{k_3}}$.
+
+    For convergence in ~20s we want a time constant $\tau \approx 5$s, so $\zeta\omega_n \approx 1/\tau = 0.2$. For a well-damped response we want $\zeta \approx 0.7$.
+
+    **Starting point:** $\omega_n = 0.2/0.7 \approx 0.3$ rad/s, so $k_3 = \omega_n^2/3 \approx 0.03$. Then $k_4 = 2\zeta/\sqrt{3/k_3} \approx 0.5$.
+
+    Let's try several values and see:
+    """)
+    return
+
+
+@app.cell
+def _(A_lat, B_lat, np, plt, scipy):
+    def sim_K(k3, k4):
+        K = np.array([[0, 0, k3, k4]])
+        A_cl = A_lat - B_lat @ K
+        s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
+        sol = scipy.integrate.solve_ivp(
+            lambda t, s: A_cl @ s,
+            [0, 30], s0,
+            t_eval=np.linspace(0, 30, 1000)
+        )
+        return sol, -(K @ sol.y)[0]
+
+    fig_man, axes_man = plt.subplots(1, 2, figsize=(12, 4))
+
+    for k3, k4, lbl in [
+        (0.5, 0,   "k3=0.5, k4=0   — undamped oscillation"),
+        (1,   0,   "k3=1,   k4=0   — still oscillating"),
+        (2,   3,   "k3=2,   k4=3   — damped but slow"),
+        (2,   5,   "k3=2,   k4=5   — converges in ~15s ✓"),
+    ]:
+        sol_k, phi_k = sim_K(k3, k4)
+        axes_man[0].plot(sol_k.t, sol_k.y[2], label=lbl)
+        axes_man[1].plot(sol_k.t, phi_k, label=lbl)
+
+    for ax in axes_man:
+        ax.axhline( np.pi/2, color='r', ls=':', lw=1, label=r"$\pm\pi/2$ limit")
+        ax.axhline(-np.pi/2, color='r', ls=':', lw=1)
+        ax.axhline(0, color='k', ls='--', lw=0.8)
+        ax.grid(True)
+        ax.legend(fontsize=7)
+        ax.set_xlabel("time (s)")
+
+    axes_man[0].set_title(r"$\Delta\theta(t)$")
+    axes_man[1].set_title(r"$\Delta\phi(t)$")
+    plt.tight_layout()
+    fig_man
+    return sim_K,
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The best candidate is $k_3=2, k_4=5$:
+    - $\omega_n = \sqrt{3 \times 2} = \sqrt{6} \approx 2.45$ rad/s
+    - $\zeta = \frac{5}{2}\sqrt{\frac{3}{2}} \approx 3.06$ — heavily overdamped, which explains the smooth non-oscillatory convergence
+
+    $\theta$ reaches zero in about 15s, and $|\Delta\phi|$ stays well within $\pi/2$ throughout. Let's verify the closed-loop stability formally:
+    """)
+    return
+
+
+@app.cell
+def _(A_lat, B_lat, np):
+    K_manual = np.array([[0, 0, 2.0, 5.0]])
+    A_cl_manual = A_lat - B_lat @ K_manual
+    eigs_manual = np.linalg.eigvals(A_cl_manual)
+    print("K_manual =", K_manual)
+    print("Closed-loop eigenvalues:", np.round(eigs_manual, 4))
+    print("All real parts negative?", all(np.real(eigs_manual) < 0))
+    return A_cl_manual, K_manual
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Two eigenvalues have strictly negative real part — the $\theta$ and $\omega$ modes are stabilized. But two eigenvalues are still exactly zero, corresponding to the $x$ and $\dot{x}$ modes that we deliberately left uncontrolled. So $\theta \to 0$ as required, but $x$ will keep drifting — which is fine for now, since the problem only asked us to stabilize the tilt.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

@@ -1128,14 +1128,6 @@ def _(M, g):
     print(f"Equilibrium: f = {f_eq} N,  theta = {theta_eq} rad,  phi = {phi_eq} rad")
     return f_eq, phi_eq, theta_eq
 
-@app.cell
-def _(M, g):
-    # equilibrium values
-    f_eq = M * g
-    theta_eq = 0.0
-    phi_eq = 0.0
-    print(f"Equilibrium: f={f_eq}, theta={theta_eq}, phi={phi_eq}")
-    return f_eq, phi_eq, theta_eq
 
 @app.cell(hide_code=True)
 def _(mo):

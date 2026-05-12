@@ -1151,24 +1151,37 @@ def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    We write $f = Mg + \Delta f$, $\theta = \Delta\theta$, $\phi = \Delta\phi$ and linearize.
+    We write the state and inputs as small perturbations around the equilibrium:
+    $$
+    \theta = 0 + \Delta\theta, \quad \phi = 0 + \Delta\phi, \quad f = Mg + \Delta f
+    $$
 
-    For small angles: $\sin(\Delta\theta + \Delta\phi) \approx \Delta\theta + \Delta\phi$ and $\cos(\Delta\theta + \Delta\phi) \approx 1$.
+    For small angles:
+    $$
+    \sin(\Delta\theta + \Delta\phi) \approx \Delta\theta + \Delta\phi, \qquad \cos(\Delta\theta + \Delta\phi) \approx 1, \qquad \sin(\Delta\phi) \approx \Delta\phi
+    $$
 
-    The linearized equations are:
+    **Linearizing $\ddot{x}$:**
+    $$
+    M\Delta\ddot{x} = -(Mg + \Delta f)(\Delta\theta + \Delta\phi) \approx -Mg(\Delta\theta + \Delta\phi)
+    $$
+    $$
+    \implies \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi)
+    $$
 
+    **Linearizing $\ddot{y}$:**
     $$
-    \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi)
+    M\Delta\ddot{y} = (Mg + \Delta f)(1) - Mg = \Delta f
+    \implies \Delta\ddot{y} = \frac{\Delta f}{M}
     $$
+
+    **Linearizing $\ddot{\theta}$:**
     $$
-    \Delta\ddot{y} = \frac{\Delta f}{M}
-    $$
-    $$
-    \Delta\ddot{\theta} = -\frac{Mg\ell}{2J} \Delta\phi
+    J\Delta\ddot{\theta} = -Mg\frac{\ell}{2}\Delta\phi
+    \implies \Delta\ddot{\theta} = -\frac{Mg\ell}{2J}\Delta\phi
     $$
     """)
     return
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -1183,7 +1196,28 @@ def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    State vector $s = (\Delta x, \Delta\dot{x}, \Delta y, \Delta\dot{y}, \Delta\theta, \Delta\dot{\theta})$, inputs $u = (\Delta f, \Delta\phi)$.
+    State vector $s = (\Delta x,\ \Delta\dot{x},\ \Delta y,\ \Delta\dot{y},\ \Delta\theta,\ \Delta\dot{\theta})$, inputs $u = (\Delta f,\ \Delta\phi)$.
+
+    $$
+    A = \begin{bmatrix}
+    0 & 1 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & -g & 0 \\
+    0 & 0 & 0 & 1 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 1 \\
+    0 & 0 & 0 & 0 & 0 & 0
+    \end{bmatrix}, \qquad
+    B = \begin{bmatrix}
+    0 & 0 \\
+    0 & -g \\
+    0 & 0 \\
+    1/M & 0 \\
+    0 & 0 \\
+    0 & -Mg\ell/(2J)
+    \end{bmatrix}
+    $$
+
+    Note: entry $A_{2,5} = -g$ captures the coupling between tilt $\Delta\theta$ and lateral acceleration $\Delta\ddot{x}$. And $B$ shows that $\Delta\phi$ affects both $\Delta\ddot{x}$ and $\Delta\ddot{\theta}$, while $\Delta f$ only affects $\Delta\ddot{y}$ — vertical and lateral dynamics are decoupled.
     """)
     return
 
@@ -1200,20 +1234,17 @@ def _(J, M, g, l, np):
     ], dtype=float)
 
     B = np.array([
-        [0,      0          ],
-        [0,     -g          ],
-        [0,      0          ],
-        [1/M,    0          ],
-        [0,      0          ],
-        [0,     -M*g*l/(2*J)],
+        [0,            0],
+        [0,           -g],
+        [0,            0],
+        [1/M,          0],
+        [0,            0],
+        [0, -M*g*l/(2*J)],
     ], dtype=float)
 
-    print("A =")
-    print(A)
-    print("B =")
-    print(B)
+    print("A =\n", A)
+    print("\nB =\n", B)
     return A, B
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""

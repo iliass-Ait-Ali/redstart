@@ -1337,7 +1337,8 @@ def _(mo):
 
     - Check the controllability of this new system.
     """)
-    return@app.cell(hide_code=True)
+    return
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     ### 🔓 Solution

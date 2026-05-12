@@ -1193,7 +1193,40 @@ def _(mo):
     Is the generic equilibrium asymptotically stable?
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    #### Asymptotic Stability
+
+    For a linear time-invariant system $\dot{s} = As$, the equilibrium $s = 0$ is **asymptotically stable** if and only if every eigenvalue $\lambda_i$ of $A$ satisfies $\text{Re}(\lambda_i) < 0$.
+
+    The reasoning is straightforward: the general solution of $\dot{s} = As$ is a linear combination of modes of the form $e^{\lambda_i t} v_i$ where $v_i$ are the eigenvectors. If $\text{Re}(\lambda_i) < 0$, the corresponding mode decays exponentially to zero. If $\text{Re}(\lambda_i) = 0$, the mode neither grows nor decays (marginal stability). If $\text{Re}(\lambda_i) > 0$, the mode grows without bound (instability).
+
+    For our booster, the matrix $A$ encodes the open-loop dynamics — meaning no control input, just the natural evolution of the system under gravity.
+    """)
+    return
+
+
+@app.cell
+def _(A, np):
+    eigenvalues = np.linalg.eigvals(A)
+    print("Eigenvalues of A:", eigenvalues)
+    print("Real parts:", np.real(eigenvalues))
+    return (eigenvalues,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    All six eigenvalues are exactly zero. This means the system is **not** asymptotically stable.
+
+    Physically, this makes complete sense: a booster hovering at equilibrium ($\theta=0$, $f=Mg$) with no active control has no mechanism to correct itself if perturbed. A small tilt $\Delta\theta$ will generate a horizontal force component, causing the booster to drift sideways — and nothing brings it back. The system is **marginally stable** in the Lyapunov sense: perturbations neither grow exponentially nor decay, but the booster drifts away from equilibrium indefinitely.
+
+    This confirms that **feedback control is necessary** to stabilize the booster.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

@@ -1293,21 +1293,17 @@ def _(mo):
     mo.md(r"""
     ### 🔓 Solution
 
-    #### Can we actually fix this with control?
+    #### Can we fix this with control?
 
-    The system is unstable — but that doesn't mean it's hopeless. The real question is: do we have *enough control authority* to steer the system wherever we want? This is what **controllability** is about.
-
-    Formally, a system $\dot{s} = As + Bu$ is controllable if for any two states $s_0$ and $s_f$, there exists a control input $u(t)$ that drives the system from $s_0$ to $s_f$ in finite time. It's a strong property — it says we have complete freedom over where the system goes.
-
-    The **Kalman rank condition** turns this into a simple matrix rank test. Build the controllability matrix:
+    The **Kalman rank condition** says the system $\dot{s} = As + Bu$ is controllable if and only if the controllability matrix
 
     $$
     \mathcal{C} = \begin{bmatrix} B \mid AB \mid A^2B \mid \cdots \mid A^{n-1}B \end{bmatrix} \in \mathbb{R}^{n \times nm}
     $$
 
-    Each block $A^k B$ tells you which directions in state space become reachable after $k$ "steps" of applying the input. If together they span all of $\mathbb{R}^n$, you can reach anything — the system is controllable. If they don't, there's a direction you can never reach no matter what you do with the inputs, which would be a serious problem.
+    has rank $n$. Each block $A^k B$ captures which directions in state space become reachable after $k$ steps of applying the input. If they span all of $\mathbb{R}^n$, the system is fully controllable.
 
-    Here $n = 6$ and $m = 2$ inputs ($\Delta f$ and $\Delta\phi$), so $\mathcal{C} \in \mathbb{R}^{6 \times 12}$.
+    Here $n = 6$ and $m = 2$, so $\mathcal{C} \in \mathbb{R}^{6 \times 12}$.
     """)
     return
 
@@ -1319,16 +1315,14 @@ def _(A, B, np):
     C_kalman = np.hstack(cols)
     rank = np.linalg.matrix_rank(C_kalman)
     print(f"rank(C) = {rank}  /  n = {n}")
-    print("Controllable:", rank == n)
+    print("System is controllable:", rank == n)
     return C_kalman, rank
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Full rank — the system is **completely controllable**.
-
-    This is actually the key result of this section. Yes, the booster is unstable without control. But we have two inputs ($f$ and $\phi$) and they give us enough authority to reach any state we want. This guarantees that a stabilizing controller *exists* — now we just have to find one.
+    Full rank — the system is **completely controllable**. Even though the booster is unstable in open loop, a stabilizing feedback controller is guaranteed to exist. Now we just have to find one.
     """)
     return
 

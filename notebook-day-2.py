@@ -1430,7 +1430,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(A_lat, np, plt, scipy):
     s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
     t_eval = np.linspace(0, 10, 500)

@@ -1082,7 +1082,31 @@ def _(mo):
     What are the possible equilibria of the system for constant inputs $f$ and $\phi$ and what are the corresponding values of these inputs?
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    At equilibrium all velocities and accelerations are zero.
+    From the equations of motion with $\sin\phi \approx \phi$ and $\sin\theta \approx \theta$ for small angles:
+
+    - $\ddot{\theta} = 0$ requires $\phi = 0$
+    - $\ddot{x} = 0$ requires $\theta = 0$  
+    - $\ddot{y} = 0$ requires $f = Mg$
+
+    So the only equilibrium is $\theta = 0$, $\phi = 0$, $f = Mg$, at any position $(x, y)$ with zero velocities.
+    """)
+    return
+
+
+@app.cell
+def _(M, g):
+    # equilibrium values
+    f_eq = M * g
+    theta_eq = 0.0
+    phi_eq = 0.0
+    print(f"Equilibrium: f={f_eq}, theta={theta_eq}, phi={phi_eq}")
+    return f_eq, phi_eq, theta_eq
 
 @app.cell(hide_code=True)
 def _(mo):
@@ -1093,7 +1117,28 @@ def _(mo):
     What are the linear ordinary differential equations that govern (approximately) these variables in a neighbourhood of the equilibrium?
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We write $f = Mg + \Delta f$, $\theta = \Delta\theta$, $\phi = \Delta\phi$ and linearize.
+
+    For small angles: $\sin(\Delta\theta + \Delta\phi) \approx \Delta\theta + \Delta\phi$ and $\cos(\Delta\theta + \Delta\phi) \approx 1$.
+
+    The linearized equations are:
+
+    $$
+    \Delta\ddot{x} = -g(\Delta\theta + \Delta\phi)
+    $$
+    $$
+    \Delta\ddot{y} = \frac{\Delta f}{M}
+    $$
+    $$
+    \Delta\ddot{\theta} = -\frac{Mg\ell}{2J} \Delta\phi
+    $$
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):
@@ -1104,7 +1149,41 @@ def _(mo):
     2. Define the corresponding NumPy arrays `A` and `B`.
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    State vector $s = (\Delta x, \Delta\dot{x}, \Delta y, \Delta\dot{y}, \Delta\theta, \Delta\dot{\theta})$, inputs $u = (\Delta f, \Delta\phi)$.
+    """)
+    return
+
+
+@app.cell
+def _(J, M, g, l, np):
+    A = np.array([
+        [0, 1, 0, 0,  0, 0],
+        [0, 0, 0, 0, -g, 0],
+        [0, 0, 0, 1,  0, 0],
+        [0, 0, 0, 0,  0, 0],
+        [0, 0, 0, 0,  0, 1],
+        [0, 0, 0, 0,  0, 0],
+    ], dtype=float)
+
+    B = np.array([
+        [0,      0          ],
+        [0,     -g          ],
+        [0,      0          ],
+        [1/M,    0          ],
+        [0,      0          ],
+        [0,     -M*g*l/(2*J)],
+    ], dtype=float)
+
+    print("A =")
+    print(A)
+    print("B =")
+    print(B)
+    return A, B
 
 @app.cell(hide_code=True)
 def _(mo):

@@ -1656,7 +1656,99 @@ def _(mo):
     Explain how you find the proper design parameters!
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    #### From manual tuning to systematic pole placement
+
+    The manual approach worked but it was mostly trial and error. Pole placement gives us a more principled method: we directly **choose where we want the closed-loop eigenvalues to be**, and the algorithm computes the gain matrix $K_{pp}$ that puts them there.
+
+    Recall that the closed-loop dynamics are $\dot{s} = (A_{lat} - B_{lat}K_{pp})s$. The eigenvalues of $A_{lat} - B_{lat}K_{pp}$ are the **poles** of the closed-loop system, and they completely determine how the system responds:
+
+    - A pole at $\lambda = \sigma + j\omega$ gives a mode that evolves like $e^{\sigma t}(\cos\omega t + \sin\omega t)$
+    - For stability we need $\sigma < 0$ so the mode decays
+    - The time constant is $\tau = 1/|\sigma|$ — how long before that mode dies out
+    - For convergence in ~20s we want $\tau \approx 5$s, meaning $|\sigma| \approx 0.2$
+
+    #### Why do we damp $\theta$ faster than $x$?
+
+    This is the key design choice. The dynamics of the system create a **cascade**: $\phi$ directly controls $\theta$, and $\theta$ indirectly controls $x$ through the coupling term $-g\Delta\theta$ in the $\ddot{x}$ equation.
+
+    Think about it physically: if the booster is tilted, it accelerates sideways. So before $x$ can converge, $\theta$ must already be close to zero — otherwise the booster keeps drifting. This means we **must** stabilize $\theta$ faster than $x$, otherwise the controller fights itself.
+
+    If we placed the $\theta$ poles slower than the $x$ poles, the lateral position would try to correct itself while the booster is still tilted, generating a chaotic back-and-forth. The cascade structure of the dynamics imposes a natural ordering: fix the tilt first, then the position follows.
+
+    There's also a practical constraint: $|\Delta\phi| < \pi/2$ at all times. Placing the $\theta$ poles too far left (very fast convergence) would require large $\phi$ corrections right at $t=0$ when $\theta(0) = \pi/4$ — we might violate the constraint. So we can't just push all poles as far left as we want.
+
+    Balancing all this, I choose:
+    $$
+    \lambda_{1,2} = -0.3 \pm 0.2j \quad \Rightarrow \quad \tau \approx 3.3\text{s} \quad \text{(}x\text{ modes — slower)}
+    $$
+    $$
+    \lambda_{3,4} = -0.5 \pm 0.3j \quad \Rightarrow \quad \tau = 2\text{s} \quad \text{(}\theta\text{ modes — faster)}
+    $$
+
+    The imaginary parts $\pm 0.2j$ and $\pm 0.3j$ introduce mild oscillations in the response — just enough to make the convergence smooth without being purely exponential, which would require very large gains.
+    """)
+    return
+
+
+@app.cell
+def _(A_lat, B_lat, np, plt, scipy):
+    desired_poles = np.array([-0.3 + 0.2j, -0.3 - 0.2j, -0.5 + 0.3j, -0.5 - 0.3j])
+    result_pp = scipy.signal.place_poles(A_lat, B_lat, desired_poles)
+    K_pp = result_pp.gain_matrix
+
+    A_cl_pp = A_lat - B_lat @ K_pp
+    eigs_pp = np.linalg.eigvals(A_cl_pp)
+    print("K_pp =", np.round(K_pp, 4))
+    print("Closed-loop eigenvalues:", np.round(eigs_pp, 4))
+    print("Asymptotically stable:", all(np.real(eigs_pp) < 0))
+
+    s0 = np.array([0.0, 0.0, np.pi/4, 0.0])
+    sol_pp = scipy.integrate.solve_ivp(
+        lambda t, s: A_cl_pp @ s,
+        [0, 30], s0,
+        t_eval=np.linspace(0, 30, 1000)
+    )
+    phi_pp = -(K_pp @ sol_pp.y)[0]
+
+    fig_pp, axes_pp = plt.subplots(1, 3, figsize=(14, 4))
+
+    axes_pp[0].plot(sol_pp.t, sol_pp.y[0])
+    axes_pp[0].set_title(r"$\Delta x(t)$")
+    axes_pp[0].set_xlabel("time (s)")
+    axes_pp[0].grid(True)
+
+    axes_pp[1].plot(sol_pp.t, sol_pp.y[2])
+    axes_pp[1].axhline(0, color='k', ls='--', lw=0.8)
+    axes_pp[1].set_title(r"$\Delta\theta(t)$")
+    axes_pp[1].set_xlabel("time (s)")
+    axes_pp[1].grid(True)
+
+    axes_pp[2].plot(sol_pp.t, phi_pp)
+    axes_pp[2].axhline( np.pi/2, color='r', ls=':', label=r"$\pm\pi/2$ limit")
+    axes_pp[2].axhline(-np.pi/2, color='r', ls=':')
+    axes_pp[2].set_title(r"$\Delta\phi(t)$")
+    axes_pp[2].set_xlabel("time (s)")
+    axes_pp[2].legend()
+    axes_pp[2].grid(True)
+
+    plt.tight_layout()
+    fig_pp
+    return A_cl_pp, K_pp, sol_pp
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Both $\Delta x$ and $\Delta\theta$ converge to zero well within 20s, $|\Delta\phi|$ stays within $\pi/2$, and all four closed-loop eigenvalues have strictly negative real part — the system is **asymptotically stable**.
+
+    Compared to the manual controller, pole placement gave us full control over both the $x$ and $\theta$ dynamics simultaneously. The tradeoff is that it requires an accurate model — it's entirely model-based.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

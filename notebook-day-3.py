@@ -2835,7 +2835,133 @@ def _(mo):
     Make the graph of the relevant variables as a function of time, then make an animation out of the same result. Comment and iterate if necessary!
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We test `compute` on the scenario from the problem statement — the booster starts at $(5, 20)$ with a slight tilt and a small downward velocity, and has to reach the landing position $(0, 2\ell/3)$ upright and at rest in 10 seconds.
+
+    We evaluate the trajectory at 600 time steps and plot the key variables. The main things to check are:
+    - boundary conditions are met at $t=0$ and $t=t_f$
+    - $z(t) < 0$ throughout — if it ever crosses zero, `T_inv` breaks down
+    - $f(t) > 0$ — thrust must stay positive
+    - $|\phi(t)| < \pi/2$ — nozzle angle stays physical
+    """)
+    return
+
+
+@app.cell
+def _(M, compute, g, l, np, plt, mo):
+    def graphical_validation():
+        tf = 10.0
+        traj = compute(
+            5.0, 0.0, 20.0, -1.0, -np.pi/8, 0.0, -M*g, 0.0,
+            0.0, 0.0, 2*l/3, 0.0,  0.0,     0.0, -M*g, 0.0,
+            tf,
+        )
+
+        t_vals = np.linspace(0, tf, 600)
+        data   = np.array([traj(t) for t in t_vals])
+
+        x, dx, y, dy       = data[:,0], data[:,1], data[:,2], data[:,3]
+        theta, dtheta       = data[:,4], data[:,5]
+        z, dz               = data[:,6], data[:,7]
+        f_val, phi_val      = data[:,8], data[:,9]
+
+        target_0 = np.array([5.0, 0.0, 20.0, -1.0, -np.pi/8, 0.0, -M*g, 0.0])
+        target_f = np.array([0.0, 0.0, 2*l/3, 0.0, 0.0, 0.0, -M*g, 0.0])
+        print(f"boundary error at t=0  : {np.linalg.norm(data[0,:8]  - target_0):.2e}")
+        print(f"boundary error at t=tf : {np.linalg.norm(data[-1,:8] - target_f):.2e}")
+        print(f"min z(t)   = {z.min():.4f}  (must stay < 0)")
+        print(f"min f(t)   = {f_val.min():.4f}  (must stay > 0)")
+        print(f"max |phi|  = {np.abs(phi_val).max():.4f} rad  (must stay < pi/2)")
+        print(f"max |theta|= {np.abs(theta).max():.4f} rad")
+
+        fig, axs = plt.subplots(4, 1, figsize=(10, 11), sharex=True)
+
+        axs[0].plot(t_vals, x,     label=r"$x(t)$",     color="steelblue")
+        axs[0].plot(t_vals, y,     label=r"$y(t)$",     color="tomato")
+        axs[0].set_ylabel("position (m)")
+        axs[0].legend()
+        axs[0].grid(True, alpha=0.3)
+
+        axs[1].plot(t_vals, theta,  label=r"$\theta(t)$",  color="mediumpurple")
+        axs[1].plot(t_vals, dtheta, label=r"$\dot\theta(t)$", color="mediumpurple", ls="--", alpha=0.6)
+        axs[1].axhline( np.pi/2, color="r", ls=":", lw=1)
+        axs[1].axhline(-np.pi/2, color="r", ls=":", lw=1)
+        axs[1].set_ylabel("angle (rad)")
+        axs[1].legend()
+        axs[1].grid(True, alpha=0.3)
+
+        axs[2].plot(t_vals, f_val,   label=r"$f(t)$",   color="seagreen")
+        axs[2].plot(t_vals, phi_val, label=r"$\phi(t)$", color="goldenrod")
+        axs[2].axhline( np.pi/2, color="r", ls=":", lw=1)
+        axs[2].axhline(-np.pi/2, color="r", ls=":", lw=1)
+        axs[2].set_ylabel("inputs")
+        axs[2].legend()
+        axs[2].grid(True, alpha=0.3)
+
+        axs[3].plot(t_vals, z,  label=r"$z(t)$",  color="navy")
+        axs[3].plot(t_vals, dz, label=r"$\dot z(t)$", color="navy", ls="--", alpha=0.6)
+        axs[3].axhline(0, color="r", ls=":", lw=1, label=r"$z=0$ (singularity)")
+        axs[3].set_ylabel("auxiliary state")
+        axs[3].set_xlabel("time (s)")
+        axs[3].legend()
+        axs[3].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        return mo.center(fig)
+
+    graphical_validation()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The boundary errors are on the order of $10^{-13}$ — essentially machine precision. The polynomial interpolation hits the boundary conditions exactly.
+
+    $z(t)$ stays strictly negative throughout, which means `T_inv` remains well-defined at every instant. The thrust $f(t)$ stays positive and $|\phi(t)| < \pi/2$ — the trajectory is physically admissible.
+    """)
+    return
+
+
+@app.cell
+def _(M, compute, booster_anim, g, l, mo, np, world):
+    def admissible_animation():
+        tf = 10.0
+        traj = compute(
+            5.0, 0.0, 20.0, -1.0, -np.pi/8, 0.0, -M*g, 0.0,
+            0.0, 0.0, 2*l/3, 0.0,  0.0,     0.0, -M*g, 0.0,
+            tf,
+        )
+
+        get = lambda i: lambda t: float(traj(t)[i])
+
+        return mo.Html(
+            world(
+                [-3, 8, -2, 22],
+                booster_anim(
+                    get(0), get(2), get(4),
+                    get(8), get(9),
+                    T=tf,
+                ),
+            )
+        ).center()
+
+    admissible_animation()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The booster follows a smooth trajectory from its initial tilted position at $(5, 20)$ down to the landing pad at $(0, 2\ell/3)$, arriving upright and at rest. The motion is continuous with no abrupt changes — exactly what you'd expect from a degree-7 polynomial path.
+
+    This confirms that the exact linearization approach works on a non-trivial scenario, far from any equilibrium, without any of the approximations that came with the linearized model from day 2.
+    """)
+    return
 
 if __name__ == "__main__":
     app.run()

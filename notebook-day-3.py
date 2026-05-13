@@ -2249,7 +2249,130 @@ def _(mo):
     Provide a geometrical interpretation of $h$ (for example, make a drawing).
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    The booster is a uniform rod of length $\ell$, center of mass $G$ at $(x, y)$. When it tilts by $\theta$, the unit vector pointing from base to tip along the rod is:
+    $$
+    \vec{u}_{axe} = \begin{pmatrix} -\sin\theta \\ \cos\theta \end{pmatrix}
+    $$
+
+    So $h$ is $G$ shifted by $\ell/6$ toward the tip:
+    $$
+    h = \begin{pmatrix} x \\ y \end{pmatrix} + \frac{\ell}{6}\,\vec{u}_{axe}
+    = \begin{pmatrix} x - (\ell/6)\sin\theta \\ y + (\ell/6)\cos\theta \end{pmatrix}
+    $$
+
+    Measured from the base:
+    1) engine at $0$
+    2) center of mass $G$ at $\ell/2$
+    3) point $h$ at $\ell/2 + \ell/6 = 2\ell/3$
+    4) tip at $\ell$
+
+    So $h$ is one third down from the tip. For a uniform rod, that's the center of mass of the upper third — a physically meaningful point, not some arbitrary formula.
+
+    Why this specific point? When you differentiate $h$ twice, things cancel out nicely — $\ddot{h}$ ends up depending only on $\theta$ and $z$, with no $\dot\theta$ terms. That's the whole reason $h$ was introduced here, and we'll see it in the next question.
+    """)
+    return
+
+
+@app.cell
+def _(np, plt):
+    def draw_h_point():
+        fig, ax = plt.subplots(1, 2, figsize=(12, 7), facecolor="white")
+
+        for k, theta in enumerate([0.0, -np.pi/6]):
+            a = ax[k]
+            a.set_facecolor("white")
+            c, s = np.cos(theta), np.sin(theta)
+            ux, uy = -s, c
+            x_cm, y_cm = 0.0, 0.0
+            L = 4.0
+            engine = np.array([x_cm - (L/2)*ux, y_cm - (L/2)*uy])
+            nose   = np.array([x_cm + (L/2)*ux, y_cm + (L/2)*uy])
+            h_pt   = np.array([x_cm + (L/6)*ux, y_cm + (L/6)*uy])
+
+            a.plot([engine[0], nose[0]], [engine[1], nose[1]],
+                   color="steelblue", lw=10, solid_capstyle="round", zorder=2)
+
+            a.plot(*engine, "o", color="tomato", markersize=20, zorder=4)
+            a.plot(*engine, "o", color="tomato", markersize=28, alpha=0.25, zorder=3)
+
+            a.plot(*[x_cm, y_cm], "s", color="navy", markersize=13, zorder=5)
+
+            a.plot(*h_pt, "*", color="goldenrod", markersize=24, zorder=5)
+
+            a.plot(*nose, "o", color="white", markersize=8,
+                   markeredgecolor="steelblue", markeredgewidth=2, zorder=5)
+
+            a.annotate("G", (x_cm, y_cm), xytext=(-35, 8),
+                       textcoords="offset points", color="navy",
+                       fontsize=13, fontweight="bold")
+            a.annotate(r"$h$", h_pt, xytext=(12, 8),
+                       textcoords="offset points", color="goldenrod",
+                       fontsize=15, fontweight="bold")
+            a.annotate("tip", nose, xytext=(8, 6),
+                       textcoords="offset points", color="gray", fontsize=10)
+            a.annotate("engine", engine, xytext=(8, -18),
+                       textcoords="offset points", color="tomato",
+                       fontsize=10, fontweight="bold")
+
+            nx, ny = c, s
+
+            d = 1.2
+            def off1(p): return (p[0] + d*nx, p[1] + d*ny)
+            Gd, hd = off1((x_cm, y_cm)), off1(h_pt)
+            a.annotate("", xy=hd, xytext=Gd,
+                       arrowprops=dict(arrowstyle="<->", color="goldenrod", lw=1.8))
+            mid = ((Gd[0]+hd[0])/2 + 0.3*nx, (Gd[1]+hd[1])/2 + 0.3*ny)
+            a.text(*mid, r"$\ell/6$", color="goldenrod", fontsize=12, fontweight="bold")
+
+            d2 = 2.4
+            def off2(p): return (p[0] + d2*nx, p[1] + d2*ny)
+            Ed2, Gd2 = off2(engine), off2((x_cm, y_cm))
+            a.annotate("", xy=Gd2, xytext=Ed2,
+                       arrowprops=dict(arrowstyle="<->", color="gray", lw=1.5))
+            mid2 = ((Ed2[0]+Gd2[0])/2 + 0.3*nx, (Ed2[1]+Gd2[1])/2 + 0.3*ny)
+            a.text(*mid2, r"$\ell/2$", color="gray", fontsize=11)
+
+            d3 = -1.5
+            def off3(p): return (p[0] + d3*nx, p[1] + d3*ny)
+            Ed3, hd3 = off3(engine), off3(h_pt)
+            a.annotate("", xy=hd3, xytext=Ed3,
+                       arrowprops=dict(arrowstyle="<->", color="seagreen", lw=1.8))
+            mid3 = ((Ed3[0]+hd3[0])/2 + 0.3*nx - 0.5, (Ed3[1]+hd3[1])/2 + 0.3*ny)
+            a.text(*mid3, r"$2\ell/3$", color="seagreen", fontsize=11, fontweight="bold")
+
+            if abs(theta) > 1e-3:
+                a.plot([x_cm, x_cm], [y_cm, y_cm + 1.5], "--",
+                       color="mediumpurple", lw=1.2, alpha=0.7)
+                from matplotlib.patches import Arc
+                arc = Arc((x_cm, y_cm), 1.8, 1.8, angle=0,
+                          theta1=90 + np.degrees(theta), theta2=90,
+                          color="mediumpurple", lw=2)
+                a.add_patch(arc)
+                a.text(x_cm - 0.5, y_cm + 1.1, r"$\theta$",
+                       color="mediumpurple", fontsize=14, fontweight="bold")
+
+            a.set_xlim(-4.5, 4.5)
+            a.set_ylim(-4, 4)
+            a.set_aspect("equal")
+            a.grid(True, alpha=0.2, linestyle="--", color="lightgray")
+            a.spines[["top", "right"]].set_visible(False)
+            a.set_title(rf"$\theta = {np.degrees(theta):.0f}^\circ$",
+                        fontsize=13, pad=12)
+
+        fig.suptitle(
+            r"Position of $h$ on the booster — $h = G + (\ell/6)\,\vec{u}_{axe}$",
+            fontsize=13, y=1.01
+        )
+        fig.tight_layout()
+        return fig
+
+    draw_h_point()
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

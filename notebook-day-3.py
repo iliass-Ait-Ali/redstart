@@ -2596,7 +2596,37 @@ def _(mo):
     Implement a function `Tr` of `x, dx, y, dy, theta, dtheta, z, dz` that returns `h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y`.
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We translate the booster state $(x, \dot x, y, \dot y, \theta, \dot\theta, z, \dot z)$ into the output coordinates $(h, \dot h, \ddot h, h^{(3)})$ using the formulas derived in the previous questions. Each line follows directly from differentiating $h = \begin{pmatrix} x - (\ell/6)\sin\theta \\ y + (\ell/6)\cos\theta \end{pmatrix}$ and substituting the dynamics.
+    """)
+    return
+
+
+@app.cell
+def _(M, g, l, np):
+    def Tr(x, dx, y, dy, theta, dtheta, z, dz):
+        c = np.cos(theta)
+        s = np.sin(theta)
+
+        h_x  = x - (l/6) * s
+        h_y  = y + (l/6) * c
+
+        dh_x = dx - (l/6) * c * dtheta
+        dh_y = dy - (l/6) * s * dtheta
+
+        d2h_x = z * s / M
+        d2h_y = -z * c / M - g
+
+        d3h_x = (dz * s + z * c * dtheta) / M
+        d3h_y = (-dz * c + z * s * dtheta) / M
+
+        return h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y
+
+    return (Tr,)
 
 @app.cell(hide_code=True)
 def _(mo):

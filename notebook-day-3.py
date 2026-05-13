@@ -2484,25 +2484,37 @@ def _(mo):
     Differentiating $\ddot h = \tfrac{z}{M}\begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix} - \begin{pmatrix}0\\g\end{pmatrix}$ with respect to time, the $g$ term disappears. The product rule on $z\sin\theta$ gives $\dot z \sin\theta + z\cos\theta\,\dot\theta$, and on $z\cos\theta$ gives $\dot z\cos\theta - z\sin\theta\,\dot\theta$:
 
     $$
-    h^{(3)} = \frac{1}{M}\begin{pmatrix} \dot z\sin\theta + z\cos\theta\,\dot\theta \\ -\dot z\cos\theta + z\sin\theta\,\dot\theta \end{pmatrix}
+    h^{(3)} = \frac{1}{M}
+    \begin{pmatrix}
+    \dot z\sin\theta + z\cos\theta\,\dot\theta \\
+    -\dot z\cos\theta + z\sin\theta\,\dot\theta
+    \end{pmatrix}
     $$
 
     At this stage $h^{(3)}$ still depends only on the state — no inputs appear yet.
 
     #### Fourth derivative
 
-    Differentiating once more, using $\ddot z = v_1$ and $\ddot\theta = v_2/z$, the inputs $(v_1, v_2)$ appear for the first time. The remaining terms come from differentiating the $\dot z$ and $\dot\theta$ factors already present in $h^{(3)}$:
+    Differentiating once more and using $\ddot z = v_1$ and $\ddot\theta = v_2/z$:
 
     $$
     h^{(4)} = \frac{1}{M}
-    \begin{pmatrix}\sin\theta & \cos\theta \\ -\cos\theta & \sin\theta\end{pmatrix}
+    \begin{pmatrix}
+    \sin\theta & \cos\theta \\
+    -\cos\theta & \sin\theta
+    \end{pmatrix}
     \begin{pmatrix} v_1 \\ v_2 \end{pmatrix}
-    + \frac{1}{M}\begin{pmatrix} 2\dot z\cos\theta\,\dot\theta - z\sin\theta\,\dot\theta^2 \\ 2\dot z\sin\theta\,\dot\theta + z\cos\theta\,\dot\theta^2 \end{pmatrix}
+    +
+    \frac{1}{M}
+    \begin{pmatrix}
+    2\dot z\cos\theta\,\dot\theta - z\sin\theta\,\dot\theta^2 \\
+    2\dot z\sin\theta\,\dot\theta + z\cos\theta\,\dot\theta^2
+    \end{pmatrix}
     $$
 
     The first term is linear in $(v_1, v_2)$ — that's what we steer. The second term depends only on the current state $(\theta, \dot\theta, z, \dot z)$, so it's a known quantity at each instant that can be computed and compensated for.
 
-    The matrix in front of $(v_1, v_2)$ is $R(\theta - \pi/2)$, which is orthogonal and always invertible regardless of $\theta$. That's what makes exact linearization possible — we can always recover any desired $h^{(4)}$ from a suitable $(v_1, v_2)$, as long as $z \neq 0$.
+    The matrix in front of $(v_1, v_2)$ is $R(\theta - \pi/2)$, orthogonal and always invertible regardless of $\theta$. That's what makes exact linearization possible — we can always recover any desired $h^{(4)}$ from a suitable $(v_1, v_2)$, as long as $z \neq 0$.
     """)
     return
 @app.cell(hide_code=True)

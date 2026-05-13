@@ -2529,7 +2529,41 @@ def _(mo):
     $$
     """)
     return
+    
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We want $h^{(4)} = u$. From the previous question:
+    $$
+    h^{(4)} = \frac{1}{M} R\left(\theta - \frac{\pi}{2}\right) \begin{pmatrix} v_1 - z\omega^2 \\ v_2 + 2\dot{z}\omega \end{pmatrix}
+    $$
+
+    Setting this equal to $u$ and solving for $v$. Notice that $R(\alpha)$ satisfies $R(\alpha)^2 = I$, which means $R^{-1}(\alpha) = R(\alpha)$ — the matrix is its own inverse. So:
+
+    $$
+    v = M\,R(\theta - \tfrac{\pi}{2})\left(u - \frac{1}{M}\begin{pmatrix} 2\dot z\cos\theta\,\dot\theta - z\sin\theta\,\dot\theta^2 \\ 2\dot z\sin\theta\,\dot\theta + z\cos\theta\,\dot\theta^2 \end{pmatrix}\right)
+    $$
+
+    Expanding the components:
+    $$
+    v_1 = z\omega^2 + M(u_1\sin\theta - u_2\cos\theta)
+    $$
+    $$
+    v_2 = -2\dot{z}\omega + M(u_1\cos\theta + u_2\sin\theta)
+    $$
+
+    This is a purely algebraic feedback — no dynamics, just a formula evaluated at each instant from the current state. By choosing $v$ this way, two things happen at once. The terms $z\omega^2$ and $2\dot{z}\omega$ cancel the centrifugal and Coriolis-like forces in $h^{(4)}$ — we pre-compute what the nonlinear dynamics are about to do and neutralize it before it has any effect. And $R(\theta - \pi/2)$ rotates the command into the right frame to account for the booster's tilt.
+
+    The result is that from $u$'s perspective, all the nonlinearity disappears exactly:
+    $$
+    \frac{d^4 h_x}{dt^4} = u_1, \qquad \frac{d^4 h_y}{dt^4} = u_2
+    $$
+
+    Two independent chains of four pure integrators — one for each component of $h$. No $\sin\theta$, no $\cos\theta$, no coupling. This is not an approximation near an equilibrium like the linearized model from day 2. It works exactly, for any angle, any state. Now $u$ can be designed with any linear method and it will work on the real nonlinear booster.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

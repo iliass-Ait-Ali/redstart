@@ -2537,52 +2537,31 @@ def _(mo):
 
     We want to find $v = (v_1, v_2)$ such that $h^{(4)} = u$. From the previous question:
 
-    $$
-    h^{(4)}
-    = \frac{v_1 - z\dot\theta^2}{M}\,e(\theta)
-    + \frac{2\dot z\dot\theta + v_2}{M}\,n(\theta)
-    $$
+    $$h^{(4)} = \frac{v_1 - z\dot\theta^2}{M}\,e(\theta) + \frac{2\dot z\dot\theta + v_2}{M}\,n(\theta)$$
 
     where:
-    $$
-    e(\theta) = \begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix}, \qquad
-    n(\theta) = \begin{pmatrix}\cos\theta \\ \sin\theta\end{pmatrix}
-    $$
+    $$e(\theta) = \begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix}, \qquad n(\theta) = \begin{pmatrix}\cos\theta \\ \sin\theta\end{pmatrix}$$
 
     These two vectors are orthonormal and form a basis of $\mathbb{R}^2$ that rotates with the booster. Together they make up the columns of the rotation matrix $R(\theta - \pi/2)$ from the auxiliary system definition — so what we're really doing here is working in the booster's own rotating frame rather than the fixed world frame.
 
     Since $e$ and $n$ are orthonormal, any vector $u$ decomposes uniquely as:
-    $$
-    u = \left(e(\theta)^\top u\right)e(\theta) + \left(n(\theta)^\top u\right)n(\theta)
-    $$
+    $$u = \left(e(\theta)^\top u\right)e(\theta) + \left(n(\theta)^\top u\right)n(\theta)$$
 
-    The coordinates in this basis are just dot products — no matrix inversion needed, which is cleaner than inverting $R(\theta - \pi/2)$ directly.
+    The coordinates in this basis are just dot products — no matrix inversion needed.
 
     To get $h^{(4)} = u$, we match coefficients in front of $e(\theta)$ and $n(\theta)$:
 
-    $$
-    \frac{v_1 - z\dot\theta^2}{M} = e(\theta)^\top u
-    \quad \Longrightarrow \quad
-    v_1 = M\,e(\theta)^\top u + z\dot\theta^2
-    $$
+    $$\frac{v_1 - z\dot\theta^2}{M} = e(\theta)^\top u \quad \Longrightarrow \quad v_1 = M\,e(\theta)^\top u + z\dot\theta^2$$
 
-    $$
-    \frac{2\dot z\dot\theta + v_2}{M} = n(\theta)^\top u
-    \quad \Longrightarrow \quad
-    v_2 = M\,n(\theta)^\top u - 2\dot z\dot\theta
-    $$
+    $$\frac{2\dot z\dot\theta + v_2}{M} = n(\theta)^\top u \quad \Longrightarrow \quad v_2 = M\,n(\theta)^\top u - 2\dot z\dot\theta$$
 
     Each formula has two parts. The terms $z\dot\theta^2$ and $2\dot z\dot\theta$ are feedforward cancellations — $z\dot\theta^2$ is centrifugal, it grows with angular velocity squared; $2\dot z\dot\theta$ is Coriolis-like, coupling the rate of change of $z$ with angular velocity. Both would distort $h^{(4)}$ if left uncanceled. The projections $e(\theta)^\top u$ and $n(\theta)^\top u$ then rotate the command $u$ from the world frame into the booster frame, compensating for whatever tilt $\theta$ the booster currently has.
 
     With this choice of $v$, everything collapses to:
-    $$
-    h^{(4)} = u
-    $$
+    $$h^{(4)} = u$$
 
     Two independent chains of four integrators — one per component of $h$:
-    $$
-    \frac{d^4 h_x}{dt^4} = u_1, \qquad \frac{d^4 h_y}{dt^4} = u_2
-    $$
+    $$\frac{d^4 h_x}{dt^4} = u_1, \qquad \frac{d^4 h_y}{dt^4} = u_2$$
 
     The full nonlinear booster is exactly equivalent to this from input to output. Not approximately, not near equilibrium — exactly, for any state, as long as $z \neq 0$.
     """)

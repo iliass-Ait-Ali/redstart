@@ -2465,7 +2465,37 @@ def _(mo):
     """)
     return
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    #### Third derivative
+
+    We differentiate $\ddot h = \tfrac{z}{M}\begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix} - \begin{pmatrix}0\\g\end{pmatrix}$ with respect to time. The $g$ term vanishes. For the rest, the product rule on $z\sin\theta$ gives $\dot z \sin\theta + z\cos\theta\,\dot\theta$, and on $z\cos\theta$ gives $\dot z\cos\theta - z\sin\theta\,\dot\theta$:
+
+    $$
+    h^{(3)} = \frac{1}{M}\begin{pmatrix} \dot z\sin\theta + z\cos\theta\,\dot\theta \\ -\dot z\cos\theta + z\sin\theta\,\dot\theta \end{pmatrix}
+    $$
+
+    At this stage $h^{(3)}$ still depends only on the state — no inputs appear yet. That changes at the next step.
+
+    #### Fourth derivative
+
+    We differentiate $h^{(3)}$ once more. Two things happen: $\ddot z = v_1$ and $\ddot\theta = v_2/z$ appear from the auxiliary system dynamics, bringing the inputs $(v_1, v_2)$ in for the first time. The remaining terms come from differentiating the $\dot z$ and $\dot\theta$ factors that were already in $h^{(3)}$:
+
+    $$
+    h^{(4)} = \frac{1}{M}
+    \underbrace{\begin{pmatrix}\sin\theta & \cos\theta \\ -\cos\theta & \sin\theta\end{pmatrix}}_{R(\theta - \pi/2)}
+    \begin{pmatrix} v_1 \\ v_2 \end{pmatrix}
+    + \frac{1}{M}\begin{pmatrix} 2\dot z\cos\theta\,\dot\theta - z\sin\theta\,\dot\theta^2 \\ 2\dot z\sin\theta\,\dot\theta + z\cos\theta\,\dot\theta^2 \end{pmatrix}
+    $$
+
+    The structure here is important. The first term is linear in $(v_1, v_2)$ — this is what we can actually steer. The second term depends only on the current state $(\theta, \dot\theta, z, \dot z)$, so at any given moment it's a known quantity that can be computed and compensated for.
+
+    Also notice the rotation matrix $R(\theta - \pi/2)$ in front of $(v_1, v_2)$. It's orthogonal, meaning it's always invertible regardless of $\theta$. That's what makes exact linearization possible — we can always invert this to recover any desired $h^{(4)}$ from a suitable choice of $(v_1, v_2)$, as long as $z \neq 0$.
+    """)
+    return
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""

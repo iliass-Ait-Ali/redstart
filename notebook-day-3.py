@@ -2383,6 +2383,78 @@ def _(mo):
     """)
     return
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
+
+    We start from:
+    $$
+    h_x = x - \tfrac{\ell}{6}\sin\theta,\qquad h_y = y + \tfrac{\ell}{6}\cos\theta.
+    $$
+
+    #### First derivative
+
+    Differentiating with respect to time:
+    $$
+    \dot h_x = \dot x - \tfrac{\ell}{6}\cos\theta\,\dot\theta,\qquad
+    \dot h_y = \dot y - \tfrac{\ell}{6}\sin\theta\,\dot\theta.
+    $$
+
+    #### Second derivative
+
+    One more differentiation:
+    $$
+    \ddot h_x = \ddot x + \tfrac{\ell}{6}\sin\theta\,\dot\theta^2 - \tfrac{\ell}{6}\cos\theta\,\ddot\theta
+    $$
+    $$
+    \ddot h_y = \ddot y - \tfrac{\ell}{6}\cos\theta\,\dot\theta^2 - \tfrac{\ell}{6}\sin\theta\,\ddot\theta
+    $$
+
+    These still depend on $\ddot x$, $\ddot y$, $\ddot\theta$ so we plug in the booster dynamics.
+
+    Newton and Euler give:
+    $$
+    M\ddot x = f_x,\qquad M\ddot y = f_y - Mg,\qquad J\ddot\theta = -\tfrac{\ell}{2}f_\perp
+    $$
+
+    The auxiliary system defines:
+    $$
+    \begin{pmatrix} f_x \\ f_y \end{pmatrix}
+    = \begin{pmatrix} \sin\theta & \cos\theta \\ -\cos\theta & \sin\theta \end{pmatrix}
+    \begin{pmatrix} z - \tfrac{M\ell\dot\theta^2}{6} \\ \tfrac{M\ell v_2}{6z} \end{pmatrix}
+    $$
+
+    With $J = M\ell^2/12$ the angular acceleration becomes:
+    $$
+    \ddot\theta = \frac{v_2}{z}
+    $$
+
+    Expanding $\ddot x$ and $\ddot y$:
+    $$
+    \ddot x = \tfrac{z}{M}\sin\theta - \tfrac{\ell\dot\theta^2}{6}\sin\theta + \tfrac{\ell v_2}{6z}\cos\theta
+    $$
+    $$
+    \ddot y = -\tfrac{z}{M}\cos\theta + \tfrac{\ell\dot\theta^2}{6}\cos\theta + \tfrac{\ell v_2}{6z}\sin\theta - g
+    $$
+
+    Substituting into $\ddot h_x$, the $\dot\theta^2$ and $v_2$ terms cancel exactly:
+    $$
+    \ddot h_x = \tfrac{z}{M}\sin\theta
+    \underbrace{- \tfrac{\ell\dot\theta^2}{6}\sin\theta + \tfrac{\ell}{6}\sin\theta\,\dot\theta^2}_{=\,0}
+    + \underbrace{\tfrac{\ell v_2}{6z}\cos\theta - \tfrac{\ell}{6}\cos\theta\cdot\tfrac{v_2}{z}}_{=\,0}
+    $$
+
+    Same cancellation happens for $\ddot h_y$. What's left:
+    $$
+    \ddot h = \begin{pmatrix} \ddot h_x \\ \ddot h_y \end{pmatrix}
+    = \frac{z}{M}\begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix}
+    - \begin{pmatrix} 0 \\ g \end{pmatrix}
+    $$
+
+    No $\dot\theta$, no $v_2$. This is exactly why $h$ was defined at $\ell/6$ above $G$ — it's the unique point where the second derivative decouples from the rotational velocity.
+    """)
+    return
 
 @app.cell(hide_code=True)
 def _(mo):

@@ -2639,7 +2639,80 @@ def _(mo):
     Implement the corresponding function `T_inv`.
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    We want to go backwards — given $(h, \dot h, \ddot h, h^{(3)})$, recover the full booster state $(x, \dot x, y, \dot y, \theta, \dot\theta, z, \dot z)$.
+
+    **Recovering $\theta$ and $z$ from $\ddot h$.**
+    From $\ddot h = \tfrac{z}{M}\begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix} - \begin{pmatrix}0\\g\end{pmatrix}$:
+    $$
+    M\ddot h_x = z\sin\theta, \qquad M(\ddot h_y + g) = -z\cos\theta
+    $$
+
+    Squaring and adding both equations:
+    $$
+    z^2 = M^2\left[\ddot h_x^2 + (\ddot h_y + g)^2\right]
+    $$
+
+    Since we assumed $z < 0$:
+    $$
+    z = -M\sqrt{\ddot h_x^2 + (\ddot h_y + g)^2}
+    $$
+
+    Then $\theta$ follows from the ratio — $\sin\theta = M\ddot h_x / z$ and $\cos\theta = -M(\ddot h_y + g)/z$, which gives:
+    $$
+    \theta = \mathrm{atan2}(-\ddot h_x,\ \ddot h_y + g)
+    $$
+
+    **Recovering $x$ and $y$** by inverting the definition of $h$:
+    $$
+    x = h_x + \tfrac{\ell}{6}\sin\theta, \qquad y = h_y - \tfrac{\ell}{6}\cos\theta
+    $$
+
+    **Recovering $\dot z$ and $\dot\theta$ from $h^{(3)}$.**
+    From the third derivative formula, projecting onto $e(\theta)$ and $n(\theta)$:
+    $$
+    \dot z = M\left(h^{(3)}_x\sin\theta - h^{(3)}_y\cos\theta\right)
+    $$
+    $$
+    \dot\theta = \frac{M}{z}\left(h^{(3)}_x\cos\theta + h^{(3)}_y\sin\theta\right)
+    $$
+
+    **Recovering $\dot x$ and $\dot y$** by inverting the first derivative of $h$:
+    $$
+    \dot x = \dot h_x + \tfrac{\ell}{6}\cos\theta\,\dot\theta, \qquad
+    \dot y = \dot h_y + \tfrac{\ell}{6}\sin\theta\,\dot\theta
+    $$
+
+    The inversion is well-defined as long as $z \neq 0$ — same condition as before.
+    """)
+    return
+
+
+@app.cell
+def _(M, g, l, np):
+    def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y):
+        z     = -M * np.sqrt(d2h_x**2 + (d2h_y + g)**2)
+        theta = np.arctan2(-d2h_x, d2h_y + g)
+
+        c = np.cos(theta)
+        s = np.sin(theta)
+
+        x  = h_x + (l/6) * s
+        y  = h_y - (l/6) * c
+
+        dz     = M * (d3h_x * s - d3h_y * c)
+        dtheta = M * (d3h_x * c + d3h_y * s) / z
+
+        dx = dh_x + (l/6) * c * dtheta
+        dy = dh_y + (l/6) * s * dtheta
+
+        return x, dx, y, dy, theta, dtheta, z, dz
+
+    return (T_inv,)
 
 @app.cell(hide_code=True)
 def _(mo):

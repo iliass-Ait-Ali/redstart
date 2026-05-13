@@ -2727,7 +2727,99 @@ def _(mo):
     that returns a function `fun` such that `fun(t)` is a value of `x, dx, y, dy, theta, dtheta, z, dz, f, phi` at time `t` that match the initial and final values provided as arguments to `compute`.
     """)
     return
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### 🔓 Solution
 
+    Here's the core idea. We showed that $h^{(4)} = u$, which means each component of $h$ is essentially a 4th-order integrator. So if we want the booster to go from some initial configuration to a final one in $t_f$ seconds, we just need to find a smooth function $h(t)$ that starts and ends at the right values — including the right velocity, acceleration, and jerk at both ends.
+
+    That's 4 conditions at $t=0$ and 4 at $t=t_f$, so 8 constraints total per component. A degree-7 polynomial has exactly 8 free coefficients — one per constraint. The system is square so there's always a unique solution. No optimization, no iteration, just solving a linear system.
+
+    Once we have $h(t)$ as a polynomial, the rest unravels cleanly. At any time $t$ we evaluate $h$ and its first four derivatives, feed $(h, \dot h, \ddot h, h^{(3)})$ into `T_inv` to get the full booster state, then use $h^{(4)}$ with the auxiliary system to recover the actual physical inputs $(f, \phi)$.
+
+    The whole thing is algebraic — no ODE to integrate, no optimization to run. Just polynomials and a few matrix operations.
+    """)
+    return
+
+
+@app.cell
+def _(M, T_inv, Tr, l, np):
+    def compute(
+        x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
+        x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf,
+        tf,
+    ):
+        from math import factorial as fac
+
+        def constraint_matrix(T):
+            t0_rows = np.zeros((4, 8))
+            tf_rows = np.zeros((4, 8))
+            for k in range(4):
+                t0_rows[k, k] = fac(k)
+                for i in range(k, 8):
+                    tf_rows[k, i] = fac(i) / fac(i - k) * T ** (i - k)
+            return np.vstack([t0_rows, tf_rows])
+
+        def solve_poly(bvals, T):
+            M_mat = constraint_matrix(T)
+            return np.linalg.solve(M_mat, bvals)
+
+        def eval_deriv(c, t, order):
+            powers = np.array([
+                fac(i) / fac(i - order) * t ** (i - order)
+                if i >= order else 0.0
+                for i in range(8)
+            ])
+            return float(c @ powers)
+
+        def to_f_phi(fx, fy, theta):
+            amplitude = np.sqrt(fx**2 + fy**2)
+            if amplitude < 1e-12:
+                return 0.0, 0.0
+            angle = np.arctan2(-fx, fy) - theta
+            return amplitude, (angle + np.pi) % (2 * np.pi) - np.pi
+
+        state_0 = Tr(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0)
+        state_f = Tr(x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf)
+
+        bx = np.array([state_0[0], state_0[2], state_0[4], state_0[6],
+                        state_f[0], state_f[2], state_f[4], state_f[6]])
+        by = np.array([state_0[1], state_0[3], state_0[5], state_0[7],
+                        state_f[1], state_f[3], state_f[5], state_f[7]])
+
+        cx = solve_poly(bx, tf)
+        cy = solve_poly(by, tf)
+
+        def fun(t):
+            orders = range(5)
+            hx_derivs = [eval_deriv(cx, t, k) for k in orders]
+            hy_derivs = [eval_deriv(cy, t, k) for k in orders]
+
+            h_x,  dh_x,  d2h_x,  d3h_x,  d4h_x  = hx_derivs
+            h_y,  dh_y,  d2h_y,  d3h_y,  d4h_y  = hy_derivs
+
+            x, dx, y, dy, theta, dtheta, z, dz = T_inv(
+                h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y
+            )
+
+            s, c = np.sin(theta), np.cos(theta)
+            n    = np.array([c, s])
+            h4   = np.array([d4h_x, d4h_y])
+
+            v2 = M * (n @ h4) - 2 * dz * dtheta
+            q1 = z - M * l * dtheta**2 / 6
+            q2 = M * l * v2 / (6 * z)
+
+            fx =  s * q1 + c * q2
+            fy = -c * q1 + s * q2
+
+            f, phi = to_f_phi(fx, fy, theta)
+            return np.array([x, dx, y, dy, theta, dtheta, z, dz, f, phi])
+
+        return fun
+
+    return (compute,)
 
 @app.cell(hide_code=True)
 def _(mo):

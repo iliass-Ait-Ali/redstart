@@ -2536,20 +2536,27 @@ def _(mo):
     ### 🔓 Solution
 
     We want to find $v = (v_1, v_2)$ such that $h^{(4)} = u$. From the previous question:
+
     $$
     h^{(4)}
     = \frac{v_1 - z\dot\theta^2}{M}\,e(\theta)
     + \frac{2\dot z\dot\theta + v_2}{M}\,n(\theta)
     $$
 
-    where $e(\theta) = \begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix}$ and $n(\theta) = \begin{pmatrix}\cos\theta \\ \sin\theta\end{pmatrix}$ are orthonormal — they form a basis of $\mathbb{R}^2$ that rotates with the booster.
+    where:
+    $$
+    e(\theta) = \begin{pmatrix}\sin\theta \\ -\cos\theta\end{pmatrix}, \qquad
+    n(\theta) = \begin{pmatrix}\cos\theta \\ \sin\theta\end{pmatrix}
+    $$
+
+    These two vectors are orthonormal and form a basis of $\mathbb{R}^2$ that rotates with the booster. Together they make up the columns of the rotation matrix $R(\theta - \pi/2)$ from the auxiliary system definition — so what we're really doing here is working in the booster's own rotating frame rather than the fixed world frame.
 
     Since $e$ and $n$ are orthonormal, any vector $u$ decomposes uniquely as:
     $$
     u = \left(e(\theta)^\top u\right)e(\theta) + \left(n(\theta)^\top u\right)n(\theta)
     $$
 
-    This is standard: in an orthonormal basis, the coordinates are just dot products. No matrix inversion needed.
+    The coordinates in this basis are just dot products — no matrix inversion needed, which is cleaner than inverting $R(\theta - \pi/2)$ directly.
 
     To get $h^{(4)} = u$, we match coefficients in front of $e(\theta)$ and $n(\theta)$:
 
@@ -2565,16 +2572,19 @@ def _(mo):
     v_2 = M\,n(\theta)^\top u - 2\dot z\dot\theta
     $$
 
-    The structure is worth noting. Each formula has two parts: a feedforward cancellation term ($z\dot\theta^2$ and $2\dot z\dot\theta$) that neutralizes the nonlinear dynamics, and a projection of $u$ onto the booster frame ($e(\theta)^\top u$ and $n(\theta)^\top u$) that accounts for the tilt. Together they make the nonlinearity disappear exactly.
-
-    The $z\dot\theta^2$ term is centrifugal — it grows with angular velocity squared and with the magnitude of $z$. The $2\dot z\dot\theta$ term is Coriolis-like — it couples the rate of change of $z$ with the angular velocity. Both of these would otherwise distort $h^{(4)}$; canceling them is the whole point.
+    Each formula has two parts. The terms $z\dot\theta^2$ and $2\dot z\dot\theta$ are feedforward cancellations — $z\dot\theta^2$ is centrifugal, it grows with angular velocity squared; $2\dot z\dot\theta$ is Coriolis-like, coupling the rate of change of $z$ with angular velocity. Both would distort $h^{(4)}$ if left uncanceled. The projections $e(\theta)^\top u$ and $n(\theta)^\top u$ then rotate the command $u$ from the world frame into the booster frame, compensating for whatever tilt $\theta$ the booster currently has.
 
     With this choice of $v$, everything collapses to:
     $$
     h^{(4)} = u
     $$
 
-    Two independent chains of four integrators — one per component of $h$. The full nonlinear booster, tilt and all, is exactly equivalent to this from input to output. Not approximately, not near equilibrium — exactly, for any state, as long as $z \neq 0$.
+    Two independent chains of four integrators — one per component of $h$:
+    $$
+    \frac{d^4 h_x}{dt^4} = u_1, \qquad \frac{d^4 h_y}{dt^4} = u_2
+    $$
+
+    The full nonlinear booster is exactly equivalent to this from input to output. Not approximately, not near equilibrium — exactly, for any state, as long as $z \neq 0$.
     """)
     return
 
